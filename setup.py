@@ -8,7 +8,7 @@ with open('requirements.txt') as open_file:
     install_requires = open_file.read()
 
 setuptools.setup(
-    name="deq-flow",
+    name="ldeq",
     version="0.0.1",
     author="Paul Micaelli",
     author_email="paul.micaelli@ed.ac.uk",
