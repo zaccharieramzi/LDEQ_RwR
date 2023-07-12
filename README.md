@@ -30,6 +30,52 @@ NB: if `opencv` gives weird errors, `pip uninstall opencv-python` and then `pip 
 3) Download the LDEQ trained weights [here](https://drive.google.com/drive/folders/1r0NJBXtAW2mIT30bPw83ZgDuPgIUdN9K?usp=share_link). This particular model uses the Anderson acceleration solver.
 4) run `python test_LDEQ_WFLW.py --landmark_model_weights /path/to/final.pth.tar --dataset_path /path/to/WFLW --workers 4 --batch_size 32`
 
+### Expected results
+The results should be similar to the following:
+```
+------------ test ------------
+NME %: 3.946569064313631
+FR_0.1% : 2.400000000000002
+AUC_0.1: 0.6212493333333333
+Finished loading WFLW dataset
+
+------------ test_largepose ------------
+NME %: 6.858957261706837
+FR_0.1% : 12.576687116564422
+AUC_0.1: 0.3751687116564418
+Finished loading WFLW dataset
+
+------------ test_expression ------------
+NME %: 4.057816854798313
+FR_0.1% : 1.5923566878980888
+AUC_0.1: 0.6068694267515924
+Finished loading WFLW dataset
+
+------------ test_illumination ------------
+NME %: 4.287161939971233
+FR_0.1% : 2.005730659025784
+AUC_0.1: 0.6288777459407832
+Finished loading WFLW dataset
+
+------------ test_makeup ------------
+NME %: 3.8494616120731573
+FR_0.1% : 0.9708737864077666
+AUC_0.1: 0.6201165048543689
+Finished loading WFLW dataset
+
+------------ test_occlusion ------------
+NME %: 4.78428865761305
+FR_0.1% : 5.29891304347826
+AUC_0.1: 0.5468401268115942
+Finished loading WFLW dataset
+
+------------ test_blur ------------
+NME %: 4.594755396480498
+FR_0.1% : 2.587322121604141
+AUC_0.1: 0.5707559292798621
+Total time: 1h06m28s
+```
+
 
 ## Test LDEQ on WFLW-V
 
