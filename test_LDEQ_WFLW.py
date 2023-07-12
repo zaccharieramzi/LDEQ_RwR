@@ -2,6 +2,7 @@ import time
 import argparse
 import numpy as np
 import torchvision.transforms as transforms
+from tqdm import tqdm
 
 from utils.helpers import *
 from utils.loss_function import *
@@ -58,7 +59,7 @@ class DEQInference(object):
             IONs = None
 
             with torch.no_grad():
-                for data in dataloader_test:
+                for data in tqdm(dataloader_test):
                     x, keypoints = data["image"], data["kpts"]
                     if self.gpu_avail:
                         x = x.cuda()
