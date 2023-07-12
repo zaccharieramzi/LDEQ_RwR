@@ -6,11 +6,11 @@ import pandas as pd
 import torchvision.transforms as transforms
 from tqdm import tqdm
 
-from utils.helpers import *
-from utils.loss_function import *
-from utils.normalize import Normalize, HeatmapsToKeypoints
-from datasets.WFLW_V.helpers import *
-from models.ldeq import LDEQ, weights_init
+from ldeq.utils.helpers import *
+from ldeq.utils.loss_function import *
+from ldeq.utils.normalize import Normalize, HeatmapsToKeypoints
+from ldeq.datasets.WFLW_V.helpers import *
+from ldeq.models.ldeq import LDEQ, weights_init
 
 heatmaps_to_keypoints = HeatmapsToKeypoints()
 

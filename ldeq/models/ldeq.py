@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchinfo
 
-from utils.solvers import root_solver
-from utils.normalize import *
+from ldeq.utils.solvers import root_solver
+from ldeq.utils.normalize import *
 
 def make_cell(args):
     return eval(args.cell_name)(args)

@@ -22,7 +22,7 @@ from scipy.optimize import root
 import time
 import torch
 
-from utils.normalize import *
+from ldeq.utils.normalize import *
 
 def _safe_norm(v):
     if not torch.isfinite(v).all():
@@ -108,7 +108,7 @@ def line_search(update, x0, g0, g, on=True):
             tmp_g0[0] = g0_new
             tmp_phi[0] = phi_new
         return phi_new
-    
+
     if on:
         s, phi1, ite = scalar_search_armijo(phi, tmp_phi[0], -tmp_phi[0], amin=1e-2)
     if (not on) or s is None:
