@@ -9,7 +9,8 @@ def set_torch_seeds(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
 def format_time(seconds):
     if seconds<1e-6:

@@ -21,7 +21,11 @@ class DEQInference(object):
         ckpt = torch.load(args.landmark_model_weights, map_location='cpu')
         self.train_args = ckpt['args']
         self.train_args.stochastic_max_iters = False #use maximum iters at inference time so perf repeatable
-        self.model = LDEQ(self.train_args).cuda()
+        self.gpu_avail = torch.cuda.is_available()
+        self.device = 'cuda' if self.gpu_avail else 'cpu'
+        self.model = LDEQ(self.train_args)
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
         self.model.apply(weights_init)
         self.model.load_state_dict(ckpt['state_dict'], strict=False)
         self.model.eval()
@@ -33,7 +37,7 @@ class DEQInference(object):
 
     def get_z0(self, batch_size):
         if self.train_args.z0_mode == 'zeros':
-            return torch.zeros(batch_size, self.train_args.z_width, self.train_args.heatmap_size, self.train_args.heatmap_size, device='cuda')
+            return torch.zeros(batch_size, self.train_args.z_width, self.train_args.heatmap_size, self.train_args.heatmap_size, device=self.device)
         else:
             raise NotImplementedError
 
@@ -55,7 +59,10 @@ class DEQInference(object):
 
             with torch.no_grad():
                 for data in dataloader_test:
-                    x, keypoints = data["image"].cuda(), data["kpts"].cuda()
+                    x, keypoints = data["image"], data["kpts"]
+                    if self.gpu_avail:
+                        x = x.cuda()
+                        keypoints = keypoints.cuda()
                     output = self.model(x, mode=self.train_args.model_mode, args=self.train_args, z0=self.get_z0(x.shape[0]))
                     pred_keypoints = output['keypoints']
 
@@ -84,7 +91,8 @@ def main(args):
     solver.test_WFLW()
 
     print(f'Total time: {format_time(time.time()-t0)}')
-    print(f'Max mem: {torch.cuda.max_memory_allocated(device="cuda") / (1024 ** 3):.1f} GB')
+    if torch.cuda.is_available():
+        print(f'Max mem: {torch.cuda.max_memory_allocated(device="cuda") / (1024 ** 3):.1f} GB')
 
 
 if __name__ == '__main__':

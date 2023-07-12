@@ -15,7 +15,9 @@ class Normalize(nn.Module):
         if mode=='softargmax':
             if learn_beta:
                 self.nonlinearity = nn.Softplus()
-                self.beta = torch.nn.Parameter(torch.ones(n_channels) * beta).view(1,-1,1,1).cuda() #one beta per heatmap. TODO: why isn't this put on gpu when we put whole model?
+                self.beta = torch.nn.Parameter(torch.ones(n_channels) * beta).view(1,-1,1,1) #one beta per heatmap. TODO: why isn't this put on gpu when we put whole model?
+                if torch.cuda.is_available():
+                    self.beta = self.beta.cuda()
             else:
                 self.nonlinearity = lambda x:x
                 self.beta=beta

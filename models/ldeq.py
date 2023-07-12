@@ -173,7 +173,7 @@ class DEQLayer(nn.Module):
             out = self.cell(out, injection=x)
             if save_trajectory: trajectory.append(out.detach())
         # no need to do one more tracked forward pass here because they're all tracked already
-            
+
         return out, fwd_logs, trajectory
 
     def _forward_implicit(self, x, args, z0, save_trajectory=False):
@@ -199,7 +199,8 @@ class DEQLayer(nn.Module):
                 def backward_hook(grad):
                     if self.hook is not None:
                         self.hook.remove()
-                        torch.cuda.synchronize()
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
                     func = lambda y: torch.autograd.grad(z_star_new, z_star, y, retain_graph=True)[0] + grad
                     solution, solver_logs_bwd = root_solver(f=func, x0=torch.zeros_like(grad), max_iters=max(1, round(args.max_iters/2)) if args.stochastic_max_iters else args.max_iters, solver_args=args, stochastic_max_iters=False, save_trajectory=False, name="backward")
                     # solution, solver_logs_bwd = root_solver(f=func, x0=torch.rand_like(grad), solver_args=args, stochastic_max_iters=False, save_trajectory=False, name="backward") #not good
@@ -319,8 +320,12 @@ if __name__=='__main__':
     args.z_width = args.n_keypoints + args.cell_extra_latent_width
 
     model = LDEQ(args).cuda()
-    images = torch.randn((2, 3, args.im_size, args.im_size)).cuda()
-    z0 = torch.zeros(2, args.z_width, args.heatmap_size, args.heatmap_size, device='cuda')
+    images = torch.randn((2, 3, args.im_size, args.im_size))
+    device = 'cpu'
+    if torch.cuda.is_available():
+        images = images.cuda()
+        device = 'cuda'
+    z0 = torch.zeros(2, args.z_width, args.heatmap_size, args.heatmap_size, device=device)
 
     out = model(images, args.model_mode, args, z0)
     print(out['keypoints'].shape)
