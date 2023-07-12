@@ -8,11 +8,11 @@ import cv2
 import torch
 import torchvision.transforms as transforms
 
-from utils.helpers import *
-from utils.loss_function import video_NME_NMJ
-from utils.normalize import HeatmapsToKeypoints
-from datasets.WFLW_V.helpers import *
-from models.ldeq import LDEQ, weights_init
+from ldeq.utils.helpers import *
+from ldeq.utils.loss_function import video_NME_NMJ
+from ldeq.utils.normalize import HeatmapsToKeypoints
+from ldeq.datasets.WFLW_V.helpers import *
+from ldeq.models.ldeq import LDEQ, weights_init
 
 heatmaps_to_keypoints = HeatmapsToKeypoints()
 
@@ -25,7 +25,11 @@ class DEQInference(object):
         ckpt = torch.load(args.landmark_model_weights, map_location='cpu')
         self.train_args = ckpt['args']
         self.train_args.stochastic_max_iters = False #use maximum iters at inference time so perf repeatable
-        self.model = LDEQ(self.train_args).cuda()
+        self.gpu_avail = torch.cuda.is_available()
+        self.device = 'cuda' if self.gpu_avail else 'cpu'
+        self.model = LDEQ(self.train_args)
+        if self.gpu_avail:
+            self.model = self.model.cuda()
         self.model.apply(weights_init)
         self.model.load_state_dict(ckpt['state_dict'], strict=False)
         self.model.eval()
@@ -37,7 +41,7 @@ class DEQInference(object):
 
     def get_z0(self, batch_size):
         if self.train_args.z0_mode == 'zeros':
-            return torch.zeros(batch_size, self.train_args.z_width, self.train_args.heatmap_size, self.train_args.heatmap_size, device='cuda')
+            return torch.zeros(batch_size, self.train_args.z_width, self.train_args.heatmap_size, self.train_args.heatmap_size, device=self.device)
         else:
             raise NotImplementedError
 
@@ -46,7 +50,7 @@ class DEQInference(object):
     # Sequential evaluation = one video at a time frame by frame.
     # This is convenient to plot and debug but slow.
     # Use batching (further down) to go faster
-    
+
     def test_all_videos_sequential(self, RWR, plot=False):
 
         with open(self.args.video_list_file_path, 'r') as f:
@@ -97,11 +101,13 @@ class DEQInference(object):
 
             transform_matrix = get_transform_from_bbox(bboxes[frame_idx], extra_scale=1.2, target_im_size=256)
             face_np = cv2.warpAffine(video_frames[frame_idx], transform_matrix, (256, 256), flags=cv2.INTER_LINEAR)
-            face_torch = self.normalize(cv2.cvtColor(face_np, cv2.COLOR_RGB2BGR)).unsqueeze(0).cuda()
+            face_torch = self.normalize(cv2.cvtColor(face_np, cv2.COLOR_RGB2BGR)).unsqueeze(0)
+            if self.gpu_avail:
+                face_torch = face_torch.cuda()
             output = self.model(face_torch, mode=self.train_args.model_mode, args=self.train_args, z0=z0)
             kpt_preds = apply_affine_transform_to_kpts(output['keypoints'].cpu().numpy().squeeze()*256, transform_matrix, inverse=True)
             pred_frame_kpts[frame_idx] = kpt_preds
-            
+
             ##plot
             if plot:
                 frame = video_frames[frame_idx]
@@ -127,7 +133,9 @@ class DEQInference(object):
 
             transform_matrix = get_transform_from_bbox(bboxes[frame_idx], extra_scale=1.2, target_im_size=256)
             face_np = cv2.warpAffine(video_frames[frame_idx], transform_matrix, (256, 256), flags=cv2.INTER_LINEAR)
-            face_torch = self.normalize(cv2.cvtColor(face_np, cv2.COLOR_RGB2BGR)).unsqueeze(0).cuda()
+            face_torch = self.normalize(cv2.cvtColor(face_np, cv2.COLOR_RGB2BGR)).unsqueeze(0)
+            if self.gpu_avail:
+                face_torch = face_torch.cuda()
 
             output = self.model(face_torch, mode=self.train_args.model_mode, args=self.train_args, z0=prev_z_star if prev_z_star is not None else self.get_z0(1))
             preds = apply_affine_transform_to_kpts(output['keypoints'].cpu().numpy().squeeze()*256, transform_matrix, inverse=True)
@@ -256,7 +264,9 @@ class DEQInference(object):
             pred_frame_kpts_chunk = np.zeros((chunk_size, frame_cnt, 98, 2))
             prev_z_star = None
             for batch_idx in range(frame_cnt):
-                video_faces_torch = torch.stack([self.normalize(cv2.cvtColor(face, cv2.COLOR_RGB2BGR)) for face in video_faces_chunk[:, batch_idx, :, :, :]]).cuda()
+                video_faces_torch = torch.stack([self.normalize(cv2.cvtColor(face, cv2.COLOR_RGB2BGR)) for face in video_faces_chunk[:, batch_idx, :, :, :]])
+                if self.gpu_avail:
+                    video_faces_torch = video_faces_torch.cuda()
 
                 if RWR:
                     z0 = prev_z_star if prev_z_star is not None else self.get_z0(chunk_size)
@@ -315,20 +325,21 @@ def main(args):
     solver.test_all_videos_batched(RWR=args.rwr)
 
     print(f'\nTotal time: {format_time(time.time()-t0)}')
-    print(f'Max mem: {torch.cuda.max_memory_allocated(device="cuda") / (1024 ** 3):.1f} GB')
+    if solver.gpu_avail:
+        print(f'Max mem: {torch.cuda.max_memory_allocated(device="cuda") / (1024 ** 3):.1f} GB')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DEQ Inference')
 
-    parser.add_argument('--landmark_model_weights', default='/path/to/final.pth.tar')
+    parser.add_argument('--landmark_model_weights', default='final.pth.tar')
     parser.add_argument('--verbose_solver', type=str2bool, default=False)
     parser.add_argument('--rwr', type=str2bool, default=True, help='Do recurrence without recurrence')
     parser.add_argument('--rwr_max_iters', type=int, default=1) #usually 1
     parser.add_argument('--rwr_take_one_less_inference_step', type=str2bool, default=False) #if True, effective n_iters=rwr_max_iters, otherwise n_iters=rwr_max_iters+1
-    
+
     parser.add_argument('--WFLW_V_split', type=str, choices=['hard', 'easy'], default='easy')
-    parser.add_argument('--WFLW_V_dataset_path', type=str, default='/path/to/WFLW_V')
+    parser.add_argument('--WFLW_V_dataset_path', type=str, default='WFLW_V_release')
     parser.add_argument('--WFLW_V_batch_size', type=int, default=5, help='max num of videos that each have their frame i combined into a single batch')
     parser.add_argument('--WFLW_V_workers', type=int, default=8, help='loading of multiple videos can be slow, so parallelize it across cpu cores')
 
@@ -336,7 +347,7 @@ if __name__ == '__main__':
     args.video_bboxes_folder_path = os.path.join(args.WFLW_V_dataset_path, 'bboxes')
     args.video_oracle_kpts_folder_path = os.path.join(args.WFLW_V_dataset_path, 'landmarks')
     args.video_frames_folder_path = os.path.join(args.WFLW_V_dataset_path, 'videos')
-    args.video_list_file_path=f'./datasets/WFLW_V/{args.WFLW_V_split}_video_IDs.txt'
+    args.video_list_file_path=f'./ldeq/datasets/WFLW_V/{args.WFLW_V_split}_video_IDs.txt'
     print('\nStarting...')
 
     main(args)
