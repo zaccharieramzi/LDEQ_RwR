@@ -48,7 +48,7 @@ class DEQInference(object):
 
     def test_WFLW(self):
         """test code adapted from https://github.com/starhiking/HeatmapInHeatmap"""
-        from datasets.WFLW.dataset import FaceDataset
+        from ldeq.datasets.WFLW.dataset import FaceDataset
         from torch.utils.data import DataLoader
         if args.debug_largepose:
             WFLW_splits = ["test_largepose"]
