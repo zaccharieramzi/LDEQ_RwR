@@ -23,6 +23,7 @@ class DEQInference(object):
         self.train_args = ckpt['args']
         self.train_args.stochastic_max_iters = False #use maximum iters at inference time so perf repeatable
         self.train_args.max_iters = args.n_forward
+        self.train_args.rel_diff_target = 1e-7  # making sure we always reach the max number of iterations
         self.gpu_avail = torch.cuda.is_available()
         self.device = 'cuda' if self.gpu_avail else 'cpu'
         self.model = LDEQ(self.train_args)
@@ -108,6 +109,7 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=4)
     parser.add_argument('--n-forward', type=int, default=1)
     parser.add_argument('--debug-largepose', action='store_true')  # set to true to only run test for largepose split
+    parser.add_argument('--output-csv', type=str, default=None)
 
     args = parser.parse_args()
 
