@@ -22,6 +22,7 @@ class DEQInference(object):
         ckpt = torch.load(args.landmark_model_weights, map_location='cpu')
         self.train_args = ckpt['args']
         self.train_args.stochastic_max_iters = False #use maximum iters at inference time so perf repeatable
+        self.train_args.max_iters = args.n_forward
         self.gpu_avail = torch.cuda.is_available()
         self.device = 'cuda' if self.gpu_avail else 'cpu'
         self.model = LDEQ(self.train_args)
@@ -46,8 +47,11 @@ class DEQInference(object):
         """test code adapted from https://github.com/starhiking/HeatmapInHeatmap"""
         from datasets.WFLW.dataset import FaceDataset
         from torch.utils.data import DataLoader
-        WFLW_splits = ["test", "test_largepose", "test_expression", "test_illumination",
-                       "test_makeup", "test_occlusion", "test_blur"]
+        if args.debug_largepose:
+            WFLW_splits = ["test_largepose"]
+        else:
+            WFLW_splits = ["test", "test_largepose", "test_expression", "test_illumination",
+                           "test_makeup", "test_occlusion", "test_blur"]
         self.model.eval()
         print(f'Running inference for splits {WFLW_splits}')
 
@@ -102,6 +106,8 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_path', type=str, default="/home/paul/Datasets/Keypoints/WFLW/HIH/")
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--workers', type=int, default=4)
+    parser.add_argument('--n-forward', type=int, default=1)
+    parser.add_argument('--debug-largepose', action='store_true')  # set to true to only run test for largepose split
 
     args = parser.parse_args()
 
