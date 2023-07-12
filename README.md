@@ -1,8 +1,8 @@
-# Recurrence without Recurrence: Stable Video Landmark Detection with DEQs
+# [Recurrence without Recurrence: Stable Video Landmark Detection with DEQs](https://arxiv.org/abs/2304.00600)
 
 This repo includes inference code for our Landmark Deep Equilibrium Model network (LDEQ), which was developed during an internship at **Nvidia** by myself, Pavlo Molchanov, Arash Vahdat, Hongxu Yin and Jan Kautz.
 
-The weights we provide here were reproduced on different hardware than the hardware used for the paper experiments, and results may be slightly different. 
+The weights we provide here were reproduced on different hardware than the hardware used for the paper experiments, and results may be slightly different.
 
 ## TLDR
 This work uses deep equilibrium models to add a form of recurrence at test time, without having access to a recurrent loss at train time. This can be used to improve temporal coherence in video landmark detection when the model is trained on still images.
