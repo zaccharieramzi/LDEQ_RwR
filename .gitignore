@@ -107,6 +107,8 @@ venv.bak/
 
 #codebase-specific
 logs/*
+*.png
+*.csv
 
 # Data and checkpoints
 WFLW/
