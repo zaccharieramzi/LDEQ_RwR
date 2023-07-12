@@ -127,7 +127,7 @@ if __name__=='__main__':
     from utils.helpers import set_torch_seeds
     set_torch_seeds(0)
 
-    root_dir = os.environ.get('WFLW_HIH_DIR', 'WFLW/HIH')
+    root_dir = os.environ.get('WFLW_DIR', 'WFLW')
 
     val_dataset = FaceDataset(root_dir=root_dir, split='test')
     val_loader = data.DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers=0, drop_last=False, pin_memory=False)
