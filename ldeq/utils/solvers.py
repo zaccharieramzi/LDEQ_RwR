@@ -22,7 +22,6 @@ from scipy.optimize import root
 import time
 import torch
 
-from ldeq.utils.normalize import *
 
 def _safe_norm(v):
     if not torch.isfinite(v).all():
