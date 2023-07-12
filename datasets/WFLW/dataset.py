@@ -122,11 +122,12 @@ class FaceDataset(data.Dataset):
         return self.pts_array.shape[0]
 
 if __name__=='__main__':
+    import os
     from utils.plot_kpts import plot_kpts_grid
     from utils.helpers import set_torch_seeds
     set_torch_seeds(0)
 
-    root_dir = '/home/paul/Datasets/Keypoints/WFLW/HIH'
+    root_dir = os.environ.get('WFLW_HIH_DIR', 'WFLW/HIH')
 
     val_dataset = FaceDataset(root_dir=root_dir, split='test')
     val_loader = data.DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers=0, drop_last=False, pin_memory=False)
