@@ -1,6 +1,8 @@
+from pathlib import Path
 import time
 import argparse
 import numpy as np
+import pandas as pd
 import torchvision.transforms as transforms
 from tqdm import tqdm
 
@@ -62,6 +64,7 @@ class DEQInference(object):
 
             SME = 0.0
             IONs = None
+            fwd_logs = []
 
             with torch.no_grad():
                 for data in tqdm(dataloader_test):
@@ -71,17 +74,35 @@ class DEQInference(object):
                         keypoints = keypoints.cuda()
                     output = self.model(x, mode=self.train_args.model_mode, args=self.train_args, z0=self.get_z0(x.shape[0]))
                     pred_keypoints = output['keypoints']
+                    fwd_logs.append(output['fwd_logs'])
 
                     sum_ion, ion_list = calc_nme(pred_keypoints, keypoints)
                     SME += sum_ion
                     IONs = np.concatenate((IONs, ion_list), 0) if IONs is not None else ion_list
 
             nme, fr, auc = compute_fr_and_auc(IONs, thres=0.10, step=0.0001)
+            rel_diff, abs_diff, mean_iters = [
+                np.mean([fwd_log[key] for fwd_log in fwd_logs])
+                for key in ['final_rel_diff', 'final_abs_diff', 'n_iters']
+            ]
 
             print(f'\n------------ {split} ------------')
             print("NME %: {}".format(nme * 100))
             print("FR_{}% : {}".format(0.10, fr * 100))
             print("AUC_{}: {}".format(0.10, auc))
+
+            if args.output_csv is not None:
+                df_results = pd.DataFrame({
+                    'split': [split],
+                    'n_forward': [args.n_forward],
+                    'nme': [nme],
+                    'fr': [fr],
+                    'auc': [auc],
+                    'rel_diff': [rel_diff],
+                    'abs_diff': [abs_diff],
+                    'mean_iters': [mean_iters],
+                })
+                df_results.to_csv(args.output_csv, mode='a', header=not Path(args.output_csv).exists(), index=False)
 
 
 ##########################
