@@ -1,7 +1,9 @@
+from pathlib import Path
 import os
 import time
 import argparse
 import numpy as np
+import pandas as pd
 import concurrent.futures
 import cv2
 
@@ -25,6 +27,8 @@ class DEQInference(object):
         ckpt = torch.load(args.landmark_model_weights, map_location='cpu')
         self.train_args = ckpt['args']
         self.train_args.stochastic_max_iters = False #use maximum iters at inference time so perf repeatable
+        self.train_args.max_iters = args.n_forward
+        self.train_args.rel_diff_target = 1e-7  # making sure we always reach the max number of iterations
         self.gpu_avail = torch.cuda.is_available()
         self.device = 'cuda' if self.gpu_avail else 'cpu'
         self.model = LDEQ(self.train_args)
@@ -249,6 +253,8 @@ class DEQInference(object):
         self.remaining_videos = len(self.video_IDs_fcnts)
         self.read_head = 0
         NMEs, NMJs = [], []
+        fwd_logs = []
+        chunk_sizes = []
 
         self.train_args.verbose_solver = self.args.verbose_solver
         if RWR:
@@ -282,6 +288,8 @@ class DEQInference(object):
                     face_kpts = output['keypoints'].cpu().numpy() * 256
                     frame_kpts = np.stack([apply_affine_transform_to_kpts(kpts, transform_matrix, inverse=True) for (kpts, transform_matrix) in zip(face_kpts, transform_matrices_chunk[:, batch_idx, :, :])])
                     pred_frame_kpts_chunk[:, batch_idx, :, :] = frame_kpts
+                fwd_logs.append(output['fwd_log'])
+                chunk_sizes.append(chunk_size)
 
 
             ## -------------- Calculate NME/NMJ for each video in chunk
@@ -290,7 +298,20 @@ class DEQInference(object):
                 print(f'video {video_ID} (NME, NMJ) = ({NME:.2f}, {NMJ:.2f})')
                 NMEs.append(NME); NMJs.append(NMJ)
 
+        rel_diff, abs_diff, mean_iters = [
+            np.average([fwd_log[key] for fwd_log in fwd_logs], weights=chunk_sizes)
+            for key in ['final_rel_diff', 'final_abs_diff', 'n_iters']
+        ]
         print(f'\n\nAvg (NME, NMJ) = {np.mean(NMEs):02.2f}, {np.mean(NMJs):02.2f}')
+        if args.output_csv is not None:
+                df_results = pd.DataFrame({
+                    'n_forward': [args.n_forward],
+                    'nme': [np.mean(NMEs)],
+                    'rel_diff': [rel_diff],
+                    'abs_diff': [abs_diff],
+                    'mean_iters': [mean_iters],
+                })
+                df_results.to_csv(args.output_csv, mode='a', header=not Path(args.output_csv).exists(), index=False)
 
 
 def get_video_data(video_ID, video_frames_folder_path, video_oracle_kpts_folder_path, video_bboxes_folder_path):
@@ -342,6 +363,9 @@ if __name__ == '__main__':
     parser.add_argument('--WFLW_V_dataset_path', type=str, default='WFLW_V_release')
     parser.add_argument('--WFLW_V_batch_size', type=int, default=5, help='max num of videos that each have their frame i combined into a single batch')
     parser.add_argument('--WFLW_V_workers', type=int, default=8, help='loading of multiple videos can be slow, so parallelize it across cpu cores')
+
+    parser.add_argument('--n-forward', type=int, default=1)
+    parser.add_argument('--output-csv', type=str, default=None)
 
     args = parser.parse_args()
     args.video_bboxes_folder_path = os.path.join(args.WFLW_V_dataset_path, 'bboxes')
