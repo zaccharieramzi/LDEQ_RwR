@@ -288,7 +288,7 @@ class DEQInference(object):
                     face_kpts = output['keypoints'].cpu().numpy() * 256
                     frame_kpts = np.stack([apply_affine_transform_to_kpts(kpts, transform_matrix, inverse=True) for (kpts, transform_matrix) in zip(face_kpts, transform_matrices_chunk[:, batch_idx, :, :])])
                     pred_frame_kpts_chunk[:, batch_idx, :, :] = frame_kpts
-                fwd_logs.append(output['fwd_log'])
+                fwd_logs.append(output['fwd_logs'])
                 chunk_sizes.append(chunk_size)
 
 
