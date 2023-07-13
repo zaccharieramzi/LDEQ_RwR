@@ -305,6 +305,7 @@ class DEQInference(object):
         print(f'\n\nAvg (NME, NMJ) = {np.mean(NMEs):02.2f}, {np.mean(NMJs):02.2f}')
         if args.output_csv is not None:
                 df_results = pd.DataFrame({
+                    'split': [args.WFLW_V_split],
                     'n_forward': [args.n_forward],
                     'nme': [np.mean(NMEs)],
                     'rel_diff': [rel_diff],
