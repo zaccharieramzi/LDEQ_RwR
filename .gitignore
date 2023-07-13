@@ -114,5 +114,5 @@ logs/*
 WFLW/
 WFLW_V_release/
 WFLW*.zip
-final.pth.tar
+final*.pth.tar
 !**/datasets/WFLW/
