@@ -112,7 +112,7 @@ logs/*
 
 # Data and checkpoints
 WFLW/
-WFLW_release/
+WFLW_V_release/
 WFLW*.zip
 final.pth.tar
 !**/datasets/WFLW/
